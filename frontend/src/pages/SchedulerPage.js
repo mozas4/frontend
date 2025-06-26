@@ -7,7 +7,13 @@ import '../styles/SchedulerPage.css';
 const SchedulerPage = ({ user, authToken }) => {
   const [preference, setPreference] = useState("crammed");
   const [courses, setCourses] = useState([
-    { name: "", lectures: "", ta_times: "" },
+    { 
+      name: "", 
+      hasLecture: true,
+      hasPractice: false,
+      lecture: { day: '', startTime: '', endTime: '' },
+      practice: { day: '', startTime: '', endTime: '' }
+    },
   ]);
   const [constraints, setConstraints] = useState("");
   const [error, setError] = useState(null);
@@ -25,7 +31,13 @@ const SchedulerPage = ({ user, authToken }) => {
   };
 
   const addCourse = () => {
-    setCourses([...courses, { name: "", lectures: "", ta_times: "" }]);
+    setCourses([...courses, { 
+      name: "", 
+      hasLecture: true,
+      hasPractice: false,
+      lecture: { day: '', startTime: '', endTime: '' },
+      practice: { day: '', startTime: '', endTime: '' }
+    }]);
   };
 
   const removeCourse = (index) => {
@@ -35,28 +47,71 @@ const SchedulerPage = ({ user, authToken }) => {
   };
 
   const validateForm = useCallback(() => {
-    for (const course of courses) {
+    for (let i = 0; i < courses.length; i++) {
+      const course = courses[i];
+      
       if (!course.name.trim()) {
-        throw new Error("Please fill in all course names");
+        throw new Error(`Please fill in the name for course ${i + 1}`);
       }
-      if (!course.lectures.trim()) {
-        throw new Error(`Please add lecture times for ${course.name}`);
+
+      // Check if at least one session type is selected
+      if (!course.hasLecture && !course.hasPractice) {
+        throw new Error(`Course "${course.name}" must have at least one session type (Lecture or Practice)`);
       }
-      if (!course.ta_times.trim()) {
-        throw new Error(`Please add TA session times for ${course.name}`);
+
+      // Validate lecture if selected
+      if (course.hasLecture) {
+        if (!course.lecture.day || course.lecture.startTime === '' || course.lecture.endTime === '') {
+          throw new Error(`Please complete all lecture details for "${course.name}"`);
+        }
+        
+        const lectureStart = parseInt(course.lecture.startTime);
+        const lectureEnd = parseInt(course.lecture.endTime);
+        
+        if (lectureEnd <= lectureStart) {
+          throw new Error(`Lecture end time must be after start time for "${course.name}"`);
+        }
+      }
+
+      // Validate practice if selected
+      if (course.hasPractice) {
+        if (!course.practice.day || course.practice.startTime === '' || course.practice.endTime === '') {
+          throw new Error(`Please complete all practice session details for "${course.name}"`);
+        }
+        
+        const practiceStart = parseInt(course.practice.startTime);
+        const practiceEnd = parseInt(course.practice.endTime);
+        
+        if (practiceEnd <= practiceStart) {
+          throw new Error(`Practice session end time must be after start time for "${course.name}"`);
+        }
       }
     }
   }, [courses]);
 
+  const formatCourseForAPI = (course) => {
+    const formattedCourse = {
+      name: course.name.trim(),
+      lectures: [],
+      ta_times: []
+    };
+
+    if (course.hasLecture && course.lecture.day && course.lecture.startTime !== '' && course.lecture.endTime !== '') {
+      formattedCourse.lectures.push(`${course.lecture.day} ${course.lecture.startTime}-${course.lecture.endTime}`);
+    }
+
+    if (course.hasPractice && course.practice.day && course.practice.startTime !== '' && course.practice.endTime !== '') {
+      formattedCourse.ta_times.push(`${course.practice.day} ${course.practice.startTime}-${course.practice.endTime}`);
+    }
+
+    return formattedCourse;
+  };
+
 const generateScheduleWithConstraints = useCallback(async (constraintsToUse) => {
   try {
-    validateForm(); // Using validateForm inside useCallback
+    validateForm();
 
-    const formattedCourses = courses.map((c) => ({
-      name: c.name.trim(),
-      lectures: c.lectures.split(",").map((s) => s.trim()).filter(s => s),
-      ta_times: c.ta_times.split(",").map((s) => s.trim()).filter(s => s),
-    }));
+    const formattedCourses = courses.map(formatCourseForAPI);
 
     localStorage.setItem('originalCourseOptions', JSON.stringify(formattedCourses));
 
@@ -97,7 +152,7 @@ const generateScheduleWithConstraints = useCallback(async (constraintsToUse) => 
     const errorMessage = err.message || 'Failed to connect to backend. Please make sure the server is running.';
     setError(errorMessage);
   }
-}, [courses, preference, validateForm, user, authToken, API_BASE_URL]);
+}, [courses, preference, validateForm, user, authToken, API_BASE_URL, formatCourseForAPI]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
