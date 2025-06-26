@@ -118,6 +118,37 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
         }
     };
 
+    // New functions to delete entire session types
+    const deleteAllLectures = () => {
+        // Clear all lecture-related errors
+        const newErrors = { ...errors };
+        Object.keys(newErrors).forEach(key => {
+            if (key.startsWith(`lecture_${index}_`)) {
+                delete newErrors[key];
+            }
+        });
+        setErrors(newErrors);
+
+        // Remove all lectures
+        onChange(index, 'lectures', []);
+        onChange(index, 'hasLecture', false);
+    };
+
+    const deleteAllPractices = () => {
+        // Clear all practice-related errors
+        const newErrors = { ...errors };
+        Object.keys(newErrors).forEach(key => {
+            if (key.startsWith(`practice_${index}_`)) {
+                delete newErrors[key];
+            }
+        });
+        setErrors(newErrors);
+
+        // Remove all practices
+        onChange(index, 'practices', []);
+        onChange(index, 'hasPractice', false);
+    };
+
     const getAvailableEndTimes = (startTime) => {
         if (startTime === '' || startTime === null) return [];
         const start = parseInt(startTime);
@@ -146,6 +177,25 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
             );
 
         return lectureValid || practiceValid;
+    };
+
+    // Check if we can delete a session type (must have at least one type)
+    const canDeleteLectures = () => {
+        return course.hasPractice && 
+               course.practices && 
+               course.practices.length > 0 &&
+               course.practices.some(practice => 
+                   practice.day && practice.startTime !== '' && practice.endTime !== ''
+               );
+    };
+
+    const canDeletePractices = () => {
+        return course.hasLecture && 
+               course.lectures && 
+               course.lectures.length > 0 &&
+               course.lectures.some(lecture => 
+                   lecture.day && lecture.startTime !== '' && lecture.endTime !== ''
+               );
     };
 
     const renderTimeSlot = (slot, slotIndex, type, onSlotChange, onSlotRemove) => {
@@ -277,14 +327,26 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
                 <div className="session-section">
                     <div className="session-type-header">
                         <h5 className="session-type-title">📚 Lectures</h5>
-                        <button
-                            type="button"
-                            className="add-slot-btn"
-                            onClick={addLectureSlot}
-                            title="Add lecture time slot"
-                        >
-                            + Add Lecture
-                        </button>
+                        <div className="session-actions">
+                            <button
+                                type="button"
+                                className="add-slot-btn"
+                                onClick={addLectureSlot}
+                                title="Add lecture time slot"
+                            >
+                                + Add Lecture
+                            </button>
+                            {course.lectures && course.lectures.length > 0 && canDeleteLectures() && (
+                                <button
+                                    type="button"
+                                    className="delete-section-btn"
+                                    onClick={deleteAllLectures}
+                                    title="Delete all lectures"
+                                >
+                                    🗑️ Delete All
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {course.lectures && course.lectures.length > 0 ? (
@@ -310,14 +372,26 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
                 <div className="session-section">
                     <div className="session-type-header">
                         <h5 className="session-type-title">👨‍🏫 Practice/TA Sessions</h5>
-                        <button
-                            type="button"
-                            className="add-slot-btn"
-                            onClick={addPracticeSlot}
-                            title="Add practice time slot"
-                        >
-                            + Add Practice
-                        </button>
+                        <div className="session-actions">
+                            <button
+                                type="button"
+                                className="add-slot-btn"
+                                onClick={addPracticeSlot}
+                                title="Add practice time slot"
+                            >
+                                + Add Practice
+                            </button>
+                            {course.practices && course.practices.length > 0 && canDeletePractices() && (
+                                <button
+                                    type="button"
+                                    className="delete-section-btn"
+                                    onClick={deleteAllPractices}
+                                    title="Delete all practices"
+                                >
+                                    🗑️ Delete All
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {course.practices && course.practices.length > 0 ? (

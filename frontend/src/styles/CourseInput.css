@@ -147,6 +147,12 @@
   gap: var(--space-2);
 }
 
+.session-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
 .add-slot-btn {
   background: linear-gradient(135deg, var(--success-500), var(--success-600));
   color: white;
@@ -166,6 +172,33 @@
   background: linear-gradient(135deg, var(--success-600), var(--success-500));
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
+}
+
+.delete-section-btn {
+  background: linear-gradient(135deg, var(--error-500), var(--error-600));
+  color: white;
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.delete-section-btn:hover {
+  background: linear-gradient(135deg, var(--error-600), var(--error-500));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.delete-section-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Time Slots Container */
@@ -395,8 +428,15 @@
     align-items: stretch;
   }
   
-  .add-slot-btn {
-    width: 100%;
+  .session-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .add-slot-btn,
+  .delete-section-btn {
+    flex: 1;
+    min-width: 120px;
     justify-content: center;
   }
   
@@ -437,5 +477,15 @@
   
   .remove-slot-btn {
     align-self: flex-end;
+  }
+  
+  .session-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .add-slot-btn,
+  .delete-section-btn {
+    width: 100%;
   }
 }
