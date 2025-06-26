@@ -22,7 +22,9 @@ const SchedulerPage = ({ user, authToken }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [parsedConstraints, setParsedConstraints] = useState(null);
   const [constraintsUpdateFunction, setConstraintsUpdateFunction] = useState(null);
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
+  
+  // Use the proxy configuration from package.json instead of environment variable
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
   const handleCourseChange = (index, field, value) => {
     const newCourses = [...courses];
@@ -120,7 +122,7 @@ const SchedulerPage = ({ user, authToken }) => {
     }
   }, [courses]);
 
-  const formatCourseForAPI = (course) => {
+  const formatCourseForAPI = useCallback((course) => {
     const formattedCourse = {
       name: course.name.trim(),
       lectures: [],
@@ -146,54 +148,83 @@ const SchedulerPage = ({ user, authToken }) => {
     }
 
     return formattedCourse;
-  };
+  }, []);
 
-const generateScheduleWithConstraints = useCallback(async (constraintsToUse) => {
-  try {
-    validateForm();
+  const generateScheduleWithConstraints = useCallback(async (constraintsToUse) => {
+    try {
+      validateForm();
 
-    const formattedCourses = courses.map(formatCourseForAPI);
+      const formattedCourses = courses.map(formatCourseForAPI);
 
-    localStorage.setItem('originalCourseOptions', JSON.stringify(formattedCourses));
+      localStorage.setItem('originalCourseOptions', JSON.stringify(formattedCourses));
 
-    const headers = {
-      "Content-Type": "application/json"
-    };
+      const headers = {
+        "Content-Type": "application/json"
+      };
 
-    // Add authorization header if user is authenticated
-    if (user && authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`;
-    }
+      // Add authorization header if user is authenticated
+      if (user && authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
 
-    const scheduleRes = await fetch(API_BASE_URL + "/api/schedule", {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify({
+      console.log('🔄 Sending request to:', API_BASE_URL + "/api/schedule");
+      console.log('📋 Request payload:', {
         preference,
         courses: formattedCourses,
         constraints: constraintsToUse
-      }),
-    });
+      });
 
-    if (!scheduleRes.ok) {
-      const errorData = await scheduleRes.json();
-      throw new Error(errorData.error || 'Failed to generate schedule');
-    }
+      const scheduleRes = await fetch(API_BASE_URL + "/api/schedule", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({
+          preference,
+          courses: formattedCourses,
+          constraints: constraintsToUse
+        }),
+      });
 
-    const data = await scheduleRes.json();
-    
-    if (data.schedule) {
-      setSchedule(data.schedule);
-      setError(null);
-    } else {
-      const errorMessage = data.error || 'No valid schedule found with the given constraints. Try adjusting your requirements.';
+      console.log('📡 Response status:', scheduleRes.status);
+      console.log('📡 Response headers:', scheduleRes.headers);
+
+      // Check if response is actually JSON
+      const contentType = scheduleRes.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await scheduleRes.text();
+        console.error('❌ Non-JSON response received:', responseText);
+        throw new Error(`Server returned non-JSON response. Status: ${scheduleRes.status}. This usually means the backend server is not running or the API endpoint is incorrect.`);
+      }
+
+      if (!scheduleRes.ok) {
+        const errorData = await scheduleRes.json();
+        console.error('❌ API Error:', errorData);
+        throw new Error(errorData.error || `Server error: ${scheduleRes.status}`);
+      }
+
+      const data = await scheduleRes.json();
+      console.log('✅ Schedule response:', data);
+      
+      if (data.schedule) {
+        setSchedule(data.schedule);
+        setError(null);
+      } else {
+        const errorMessage = data.error || 'No valid schedule found with the given constraints. Try adjusting your requirements.';
+        setError(errorMessage);
+      }
+    } catch (err) {
+      console.error('❌ Schedule generation error:', err);
+      let errorMessage = err.message;
+      
+      // Provide more helpful error messages
+      if (err.message.includes('Failed to fetch')) {
+        errorMessage = 'Unable to connect to the server. Please check if the backend is running and try again.';
+      } else if (err.message.includes('NetworkError')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      }
+      
       setError(errorMessage);
     }
-  } catch (err) {
-    const errorMessage = err.message || 'Failed to connect to backend. Please make sure the server is running.';
-    setError(errorMessage);
-  }
-}, [courses, preference, validateForm, user, authToken, API_BASE_URL, formatCourseForAPI]);
+  }, [courses, preference, validateForm, user, authToken, API_BASE_URL, formatCourseForAPI]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -205,6 +236,7 @@ const generateScheduleWithConstraints = useCallback(async (constraintsToUse) => 
     try {
       let parsedConstraints = [];
       let constraintsData = null;
+      
       if (constraints.trim()) {
         const headers = {
           "Content-Type": "application/json"
@@ -215,25 +247,46 @@ const generateScheduleWithConstraints = useCallback(async (constraintsToUse) => 
           headers['Authorization'] = `Bearer ${authToken}`;
         }
 
+        console.log('🔄 Parsing constraints...');
+        
         const parseRes = await fetch(API_BASE_URL + "/api/parse", {
           method: "POST",
           headers: headers,
           body: JSON.stringify({ text: constraints }),
         });
 
+        console.log('📡 Parse response status:', parseRes.status);
+
+        // Check if response is actually JSON
+        const contentType = parseRes.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const responseText = await parseRes.text();
+          console.error('❌ Non-JSON response from parse endpoint:', responseText);
+          throw new Error(`Constraints parsing failed. Server returned non-JSON response. This usually means the backend server is not running.`);
+        }
+
         if (!parseRes.ok) {
           const errorData = await parseRes.json();
+          console.error('❌ Parse error:', errorData);
           throw new Error(errorData.error || 'Failed to parse constraints');
         }
 
         constraintsData = await parseRes.json();
         parsedConstraints = constraintsData.constraints || [];
         setParsedConstraints(constraintsData);
+        console.log('✅ Constraints parsed:', parsedConstraints);
       }
 
       await generateScheduleWithConstraints(parsedConstraints);
     } catch (err) {
-      const errorMessage = err.message || 'Failed to connect to backend. Please make sure the server is running.';
+      console.error('❌ Submit error:', err);
+      let errorMessage = err.message;
+      
+      // Provide more helpful error messages
+      if (err.message.includes('Failed to fetch')) {
+        errorMessage = 'Unable to connect to the server. Please make sure the backend is running on the correct port and try again.';
+      }
+      
       setError(errorMessage);
       setParsedConstraints(null);
     } finally {
