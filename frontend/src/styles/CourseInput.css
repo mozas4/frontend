@@ -127,62 +127,96 @@
   margin-bottom: 0;
 }
 
-.session-toggle {
+/* Session Type Header */
+.session-type-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.checkbox-label {
+.session-type-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 1rem;
+  gap: var(--space-2);
 }
 
-.checkbox-label input[type="checkbox"] {
-  display: none;
-}
-
-.checkbox-custom {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--bg-secondary);
-  position: relative;
-  transition: all var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
-  background: var(--primary-500);
-  border-color: var(--primary-500);
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
-  content: '✓';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+.add-slot-btn {
+  background: linear-gradient(135deg, var(--success-500), var(--success-600));
   color: white;
-  font-size: 0.75rem;
-  font-weight: bold;
-}
-
-.session-type-label {
-  font-size: 1rem;
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
   font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-/* Time Selector Container */
-.time-selector-container {
+.add-slot-btn:hover {
+  background: linear-gradient(135deg, var(--success-600), var(--success-500));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Time Slots Container */
+.time-slots-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.time-slot-item {
   background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: var(--space-4);
-  border: 1px solid var(--border-color);
+  position: relative;
+}
+
+.time-slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.time-slot-number {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.remove-slot-btn {
+  background: var(--error-500);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all var(--transition-fast);
+}
+
+.remove-slot-btn:hover {
+  background: var(--error-600);
+  transform: scale(1.1);
 }
 
 .time-selector-row {
@@ -270,6 +304,18 @@
   font-size: 1em;
 }
 
+/* No Sessions Message */
+.no-sessions-message {
+  background: var(--gray-50);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
 /* Validation Warning */
 .validation-warning {
   background: var(--warning-50);
@@ -328,6 +374,10 @@
   animation: slideInLeft 0.4s ease-out;
 }
 
+.time-slot-item {
+  animation: slideInLeft 0.3s ease-out;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .course-block {
@@ -337,6 +387,17 @@
   
   .sessions-container {
     padding: var(--space-4);
+  }
+  
+  .session-type-header {
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: stretch;
+  }
+  
+  .add-slot-btn {
+    width: 100%;
+    justify-content: center;
   }
   
   .time-selector-row {
@@ -362,5 +423,19 @@
   
   .session-section {
     padding: var(--space-3);
+  }
+  
+  .time-slot-item {
+    padding: var(--space-3);
+  }
+  
+  .time-slot-header {
+    flex-direction: column;
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+  
+  .remove-slot-btn {
+    align-self: flex-end;
   }
 }

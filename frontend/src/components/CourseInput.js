@@ -20,9 +20,9 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
         };
     });
 
-    const validateTimeSlot = (day, startTime, endTime, type) => {
+    const validateTimeSlot = (day, startTime, endTime, type, slotIndex) => {
         const newErrors = { ...errors };
-        const errorKey = `${type}_${index}`;
+        const errorKey = `${type}_${index}_${slotIndex}`;
 
         // Clear previous errors for this slot
         delete newErrors[errorKey];
@@ -42,46 +42,80 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleLectureChange = (field, value) => {
-        const newLecture = { ...course.lecture };
-        newLecture[field] = value;
+    const handleLectureChange = (slotIndex, field, value) => {
+        const newLectures = [...(course.lectures || [])];
+        if (!newLectures[slotIndex]) {
+            newLectures[slotIndex] = { day: '', startTime: '', endTime: '' };
+        }
+        newLectures[slotIndex][field] = value;
 
         // Validate when all fields are filled
-        if (newLecture.day && newLecture.startTime !== '' && newLecture.endTime !== '') {
-            validateTimeSlot(newLecture.day, newLecture.startTime, newLecture.endTime, 'lecture');
+        const slot = newLectures[slotIndex];
+        if (slot.day && slot.startTime !== '' && slot.endTime !== '') {
+            validateTimeSlot(slot.day, slot.startTime, slot.endTime, 'lecture', slotIndex);
         }
 
-        onChange(index, 'lecture', newLecture);
+        onChange(index, 'lectures', newLectures);
     };
 
-    const handlePracticeChange = (field, value) => {
-        const newPractice = { ...course.practice };
-        newPractice[field] = value;
+    const handlePracticeChange = (slotIndex, field, value) => {
+        const newPractices = [...(course.practices || [])];
+        if (!newPractices[slotIndex]) {
+            newPractices[slotIndex] = { day: '', startTime: '', endTime: '' };
+        }
+        newPractices[slotIndex][field] = value;
 
         // Validate when all fields are filled
-        if (newPractice.day && newPractice.startTime !== '' && newPractice.endTime !== '') {
-            validateTimeSlot(newPractice.day, newPractice.startTime, newPractice.endTime, 'practice');
+        const slot = newPractices[slotIndex];
+        if (slot.day && slot.startTime !== '' && slot.endTime !== '') {
+            validateTimeSlot(slot.day, slot.startTime, slot.endTime, 'practice', slotIndex);
         }
 
-        onChange(index, 'practice', newPractice);
+        onChange(index, 'practices', newPractices);
     };
 
-    const toggleLecture = () => {
-        if (course.hasLecture) {
-            onChange(index, 'lecture', { day: '', startTime: '', endTime: '' });
-        } else {
-            onChange(index, 'lecture', { day: 'Mon', startTime: 9, endTime: 11 });
-        }
-        onChange(index, 'hasLecture', !course.hasLecture);
+    const addLectureSlot = () => {
+        const newLectures = [...(course.lectures || [])];
+        newLectures.push({ day: '', startTime: '', endTime: '' });
+        onChange(index, 'lectures', newLectures);
+        onChange(index, 'hasLecture', true);
     };
 
-    const togglePractice = () => {
-        if (course.hasPractice) {
-            onChange(index, 'practice', { day: '', startTime: '', endTime: '' });
-        } else {
-            onChange(index, 'practice', { day: 'Mon', startTime: 14, endTime: 16 });
+    const addPracticeSlot = () => {
+        const newPractices = [...(course.practices || [])];
+        newPractices.push({ day: '', startTime: '', endTime: '' });
+        onChange(index, 'practices', newPractices);
+        onChange(index, 'hasPractice', true);
+    };
+
+    const removeLectureSlot = (slotIndex) => {
+        const newLectures = course.lectures.filter((_, i) => i !== slotIndex);
+        onChange(index, 'lectures', newLectures);
+        
+        // Clear errors for this slot
+        const newErrors = { ...errors };
+        delete newErrors[`lecture_${index}_${slotIndex}`];
+        setErrors(newErrors);
+
+        // If no lectures left, disable lecture section
+        if (newLectures.length === 0) {
+            onChange(index, 'hasLecture', false);
         }
-        onChange(index, 'hasPractice', !course.hasPractice);
+    };
+
+    const removePracticeSlot = (slotIndex) => {
+        const newPractices = course.practices.filter((_, i) => i !== slotIndex);
+        onChange(index, 'practices', newPractices);
+        
+        // Clear errors for this slot
+        const newErrors = { ...errors };
+        delete newErrors[`practice_${index}_${slotIndex}`];
+        setErrors(newErrors);
+
+        // If no practices left, disable practice section
+        if (newPractices.length === 0) {
+            onChange(index, 'hasPractice', false);
+        }
     };
 
     const getAvailableEndTimes = (startTime) => {
@@ -92,18 +126,116 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
 
     const hasValidSession = () => {
         const lectureValid = course.hasLecture && 
-            course.lecture?.day && 
-            course.lecture?.startTime !== '' && 
-            course.lecture?.endTime !== '' &&
-            !errors[`lecture_${index}`];
+            course.lectures && 
+            course.lectures.length > 0 &&
+            course.lectures.some(lecture => 
+                lecture.day && 
+                lecture.startTime !== '' && 
+                lecture.endTime !== '' &&
+                !errors[`lecture_${index}_${course.lectures.indexOf(lecture)}`]
+            );
             
         const practiceValid = course.hasPractice && 
-            course.practice?.day && 
-            course.practice?.startTime !== '' && 
-            course.practice?.endTime !== '' &&
-            !errors[`practice_${index}`];
+            course.practices && 
+            course.practices.length > 0 &&
+            course.practices.some(practice => 
+                practice.day && 
+                practice.startTime !== '' && 
+                practice.endTime !== '' &&
+                !errors[`practice_${index}_${course.practices.indexOf(practice)}`]
+            );
 
         return lectureValid || practiceValid;
+    };
+
+    const renderTimeSlot = (slot, slotIndex, type, onSlotChange, onSlotRemove) => {
+        const errorKey = `${type}_${index}_${slotIndex}`;
+        const canRemoveSlot = type === 'lecture' ? 
+            (course.lectures && course.lectures.length > 1) : 
+            (course.practices && course.practices.length > 1);
+
+        return (
+            <div key={slotIndex} className="time-slot-item">
+                <div className="time-slot-header">
+                    <span className="time-slot-number">
+                        {type === 'lecture' ? '📚' : '👨‍🏫'} Session {slotIndex + 1}
+                    </span>
+                    {canRemoveSlot && (
+                        <button
+                            type="button"
+                            className="remove-slot-btn"
+                            onClick={() => onSlotRemove(slotIndex)}
+                            title="Remove this time slot"
+                        >
+                            ×
+                        </button>
+                    )}
+                </div>
+
+                <div className="time-selector-row">
+                    <div className="selector-group">
+                        <label>Day</label>
+                        <select
+                            value={slot.day || ''}
+                            onChange={(e) => onSlotChange(slotIndex, 'day', e.target.value)}
+                            className="day-selector"
+                        >
+                            <option value="">Select Day</option>
+                            {days.map(day => (
+                                <option key={day.value} value={day.value}>
+                                    {day.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="selector-group">
+                        <label>Start Time</label>
+                        <select
+                            value={slot.startTime || ''}
+                            onChange={(e) => onSlotChange(slotIndex, 'startTime', e.target.value)}
+                            className="time-selector"
+                        >
+                            <option value="">Start</option>
+                            {hours.slice(0, -1).map(hour => (
+                                <option key={hour.value} value={hour.value}>
+                                    {hour.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="selector-group">
+                        <label>End Time</label>
+                        <select
+                            value={slot.endTime || ''}
+                            onChange={(e) => onSlotChange(slotIndex, 'endTime', e.target.value)}
+                            className="time-selector"
+                            disabled={!slot.startTime}
+                        >
+                            <option value="">End</option>
+                            {getAvailableEndTimes(slot.startTime).map(hour => (
+                                <option key={hour.value} value={hour.value}>
+                                    {hour.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {errors[errorKey] && (
+                    <div className="error-message">
+                        {errors[errorKey]}
+                    </div>
+                )}
+
+                {slot.day && slot.startTime && slot.endTime && !errors[errorKey] && (
+                    <div className="time-preview">
+                        {type === 'lecture' ? '📚' : '👨‍🏫'} {slot.day} {slot.startTime}:00 - {slot.endTime}:00
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -138,176 +270,79 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
             <div className="sessions-container">
                 <div className="session-header">
                     <h4>Course Sessions</h4>
-                    <p className="session-note">Select at least one type of session</p>
+                    <p className="session-note">Add at least one lecture or practice session</p>
                 </div>
 
                 {/* Lecture Section */}
                 <div className="session-section">
-                    <div className="session-toggle">
-                        <label className="checkbox-label">
-                            <input
-                                type="checkbox"
-                                checked={course.hasLecture}
-                                onChange={toggleLecture}
-                            />
-                            <span className="checkbox-custom"></span>
-                            <span className="session-type-label">Lecture</span>
-                        </label>
+                    <div className="session-type-header">
+                        <h5 className="session-type-title">📚 Lectures</h5>
+                        <button
+                            type="button"
+                            className="add-slot-btn"
+                            onClick={addLectureSlot}
+                            title="Add lecture time slot"
+                        >
+                            + Add Lecture
+                        </button>
                     </div>
 
-                    {course.hasLecture && (
-                        <div className="time-selector-container">
-                            <div className="time-selector-row">
-                                <div className="selector-group">
-                                    <label>Day</label>
-                                    <select
-                                        value={course.lecture?.day || ''}
-                                        onChange={(e) => handleLectureChange('day', e.target.value)}
-                                        className="day-selector"
-                                    >
-                                        <option value="">Select Day</option>
-                                        {days.map(day => (
-                                            <option key={day.value} value={day.value}>
-                                                {day.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="selector-group">
-                                    <label>Start Time</label>
-                                    <select
-                                        value={course.lecture?.startTime || ''}
-                                        onChange={(e) => handleLectureChange('startTime', e.target.value)}
-                                        className="time-selector"
-                                    >
-                                        <option value="">Start</option>
-                                        {hours.slice(0, -1).map(hour => (
-                                            <option key={hour.value} value={hour.value}>
-                                                {hour.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="selector-group">
-                                    <label>End Time</label>
-                                    <select
-                                        value={course.lecture?.endTime || ''}
-                                        onChange={(e) => handleLectureChange('endTime', e.target.value)}
-                                        className="time-selector"
-                                        disabled={!course.lecture?.startTime}
-                                    >
-                                        <option value="">End</option>
-                                        {getAvailableEndTimes(course.lecture?.startTime).map(hour => (
-                                            <option key={hour.value} value={hour.value}>
-                                                {hour.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {errors[`lecture_${index}`] && (
-                                <div className="error-message">
-                                    {errors[`lecture_${index}`]}
-                                </div>
+                    {course.lectures && course.lectures.length > 0 ? (
+                        <div className="time-slots-container">
+                            {course.lectures.map((lecture, slotIndex) => 
+                                renderTimeSlot(
+                                    lecture, 
+                                    slotIndex, 
+                                    'lecture', 
+                                    handleLectureChange, 
+                                    removeLectureSlot
+                                )
                             )}
-
-                            {course.lecture?.day && course.lecture?.startTime && course.lecture?.endTime && !errors[`lecture_${index}`] && (
-                                <div className="time-preview">
-                                    📚 Lecture: {course.lecture.day} {course.lecture.startTime}:00 - {course.lecture.endTime}:00
-                                </div>
-                            )}
+                        </div>
+                    ) : (
+                        <div className="no-sessions-message">
+                            No lecture sessions added. Click "Add Lecture" to add one.
                         </div>
                     )}
                 </div>
 
                 {/* Practice Section */}
                 <div className="session-section">
-                    <div className="session-toggle">
-                        <label className="checkbox-label">
-                            <input
-                                type="checkbox"
-                                checked={course.hasPractice}
-                                onChange={togglePractice}
-                            />
-                            <span className="checkbox-custom"></span>
-                            <span className="session-type-label">Practice/TA Session</span>
-                        </label>
+                    <div className="session-type-header">
+                        <h5 className="session-type-title">👨‍🏫 Practice/TA Sessions</h5>
+                        <button
+                            type="button"
+                            className="add-slot-btn"
+                            onClick={addPracticeSlot}
+                            title="Add practice time slot"
+                        >
+                            + Add Practice
+                        </button>
                     </div>
 
-                    {course.hasPractice && (
-                        <div className="time-selector-container">
-                            <div className="time-selector-row">
-                                <div className="selector-group">
-                                    <label>Day</label>
-                                    <select
-                                        value={course.practice?.day || ''}
-                                        onChange={(e) => handlePracticeChange('day', e.target.value)}
-                                        className="day-selector"
-                                    >
-                                        <option value="">Select Day</option>
-                                        {days.map(day => (
-                                            <option key={day.value} value={day.value}>
-                                                {day.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="selector-group">
-                                    <label>Start Time</label>
-                                    <select
-                                        value={course.practice?.startTime || ''}
-                                        onChange={(e) => handlePracticeChange('startTime', e.target.value)}
-                                        className="time-selector"
-                                    >
-                                        <option value="">Start</option>
-                                        {hours.slice(0, -1).map(hour => (
-                                            <option key={hour.value} value={hour.value}>
-                                                {hour.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="selector-group">
-                                    <label>End Time</label>
-                                    <select
-                                        value={course.practice?.endTime || ''}
-                                        onChange={(e) => handlePracticeChange('endTime', e.target.value)}
-                                        className="time-selector"
-                                        disabled={!course.practice?.startTime}
-                                    >
-                                        <option value="">End</option>
-                                        {getAvailableEndTimes(course.practice?.startTime).map(hour => (
-                                            <option key={hour.value} value={hour.value}>
-                                                {hour.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {errors[`practice_${index}`] && (
-                                <div className="error-message">
-                                    {errors[`practice_${index}`]}
-                                </div>
+                    {course.practices && course.practices.length > 0 ? (
+                        <div className="time-slots-container">
+                            {course.practices.map((practice, slotIndex) => 
+                                renderTimeSlot(
+                                    practice, 
+                                    slotIndex, 
+                                    'practice', 
+                                    handlePracticeChange, 
+                                    removePracticeSlot
+                                )
                             )}
-
-                            {course.practice?.day && course.practice?.startTime && course.practice?.endTime && !errors[`practice_${index}`] && (
-                                <div className="time-preview">
-                                    👨‍🏫 Practice: {course.practice.day} {course.practice.startTime}:00 - {course.practice.endTime}:00
-                                </div>
-                            )}
+                        </div>
+                    ) : (
+                        <div className="no-sessions-message">
+                            No practice sessions added. Click "Add Practice" to add one.
                         </div>
                     )}
                 </div>
 
-                {!course.hasLecture && !course.hasPractice && (
+                {(!course.lectures || course.lectures.length === 0) && 
+                 (!course.practices || course.practices.length === 0) && (
                     <div className="validation-warning">
-                        ⚠️ Please select at least one session type (Lecture or Practice)
+                        ⚠️ Please add at least one lecture or practice session
                     </div>
                 )}
             </div>

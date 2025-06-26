@@ -9,10 +9,10 @@ const SchedulerPage = ({ user, authToken }) => {
   const [courses, setCourses] = useState([
     { 
       name: "", 
-      hasLecture: true,
+      hasLecture: false,
       hasPractice: false,
-      lecture: { day: '', startTime: '', endTime: '' },
-      practice: { day: '', startTime: '', endTime: '' }
+      lectures: [],
+      practices: []
     },
   ]);
   const [constraints, setConstraints] = useState("");
@@ -27,16 +27,25 @@ const SchedulerPage = ({ user, authToken }) => {
   const handleCourseChange = (index, field, value) => {
     const newCourses = [...courses];
     newCourses[index][field] = value;
+    
+    // Update hasLecture and hasPractice flags based on array contents
+    if (field === 'lectures') {
+      newCourses[index].hasLecture = value.length > 0;
+    }
+    if (field === 'practices') {
+      newCourses[index].hasPractice = value.length > 0;
+    }
+    
     setCourses(newCourses);
   };
 
   const addCourse = () => {
     setCourses([...courses, { 
       name: "", 
-      hasLecture: true,
+      hasLecture: false,
       hasPractice: false,
-      lecture: { day: '', startTime: '', endTime: '' },
-      practice: { day: '', startTime: '', endTime: '' }
+      lectures: [],
+      practices: []
     }]);
   };
 
@@ -54,36 +63,58 @@ const SchedulerPage = ({ user, authToken }) => {
         throw new Error(`Please fill in the name for course ${i + 1}`);
       }
 
-      // Check if at least one session type is selected
-      if (!course.hasLecture && !course.hasPractice) {
-        throw new Error(`Course "${course.name}" must have at least one session type (Lecture or Practice)`);
+      // Check if at least one session type has valid time slots
+      const hasValidLectures = course.lectures && course.lectures.length > 0 && 
+        course.lectures.some(lecture => 
+          lecture.day && lecture.startTime !== '' && lecture.endTime !== ''
+        );
+      
+      const hasValidPractices = course.practices && course.practices.length > 0 && 
+        course.practices.some(practice => 
+          practice.day && practice.startTime !== '' && practice.endTime !== ''
+        );
+
+      if (!hasValidLectures && !hasValidPractices) {
+        throw new Error(`Course "${course.name}" must have at least one complete lecture or practice session`);
       }
 
-      // Validate lecture if selected
-      if (course.hasLecture) {
-        if (!course.lecture.day || course.lecture.startTime === '' || course.lecture.endTime === '') {
-          throw new Error(`Please complete all lecture details for "${course.name}"`);
-        }
-        
-        const lectureStart = parseInt(course.lecture.startTime);
-        const lectureEnd = parseInt(course.lecture.endTime);
-        
-        if (lectureEnd <= lectureStart) {
-          throw new Error(`Lecture end time must be after start time for "${course.name}"`);
+      // Validate all lecture time slots
+      if (course.lectures && course.lectures.length > 0) {
+        for (let j = 0; j < course.lectures.length; j++) {
+          const lecture = course.lectures[j];
+          if (lecture.day || lecture.startTime !== '' || lecture.endTime !== '') {
+            // If any field is filled, all must be filled
+            if (!lecture.day || lecture.startTime === '' || lecture.endTime === '') {
+              throw new Error(`Please complete all details for lecture ${j + 1} in "${course.name}"`);
+            }
+            
+            const lectureStart = parseInt(lecture.startTime);
+            const lectureEnd = parseInt(lecture.endTime);
+            
+            if (lectureEnd <= lectureStart) {
+              throw new Error(`Lecture ${j + 1} end time must be after start time for "${course.name}"`);
+            }
+          }
         }
       }
 
-      // Validate practice if selected
-      if (course.hasPractice) {
-        if (!course.practice.day || course.practice.startTime === '' || course.practice.endTime === '') {
-          throw new Error(`Please complete all practice session details for "${course.name}"`);
-        }
-        
-        const practiceStart = parseInt(course.practice.startTime);
-        const practiceEnd = parseInt(course.practice.endTime);
-        
-        if (practiceEnd <= practiceStart) {
-          throw new Error(`Practice session end time must be after start time for "${course.name}"`);
+      // Validate all practice time slots
+      if (course.practices && course.practices.length > 0) {
+        for (let j = 0; j < course.practices.length; j++) {
+          const practice = course.practices[j];
+          if (practice.day || practice.startTime !== '' || practice.endTime !== '') {
+            // If any field is filled, all must be filled
+            if (!practice.day || practice.startTime === '' || practice.endTime === '') {
+              throw new Error(`Please complete all details for practice session ${j + 1} in "${course.name}"`);
+            }
+            
+            const practiceStart = parseInt(practice.startTime);
+            const practiceEnd = parseInt(practice.endTime);
+            
+            if (practiceEnd <= practiceStart) {
+              throw new Error(`Practice session ${j + 1} end time must be after start time for "${course.name}"`);
+            }
+          }
         }
       }
     }
@@ -96,12 +127,22 @@ const SchedulerPage = ({ user, authToken }) => {
       ta_times: []
     };
 
-    if (course.hasLecture && course.lecture.day && course.lecture.startTime !== '' && course.lecture.endTime !== '') {
-      formattedCourse.lectures.push(`${course.lecture.day} ${course.lecture.startTime}-${course.lecture.endTime}`);
+    // Add all valid lecture time slots
+    if (course.lectures && course.lectures.length > 0) {
+      course.lectures.forEach(lecture => {
+        if (lecture.day && lecture.startTime !== '' && lecture.endTime !== '') {
+          formattedCourse.lectures.push(`${lecture.day} ${lecture.startTime}-${lecture.endTime}`);
+        }
+      });
     }
 
-    if (course.hasPractice && course.practice.day && course.practice.startTime !== '' && course.practice.endTime !== '') {
-      formattedCourse.ta_times.push(`${course.practice.day} ${course.practice.startTime}-${course.practice.endTime}`);
+    // Add all valid practice time slots
+    if (course.practices && course.practices.length > 0) {
+      course.practices.forEach(practice => {
+        if (practice.day && practice.startTime !== '' && practice.endTime !== '') {
+          formattedCourse.ta_times.push(`${practice.day} ${practice.startTime}-${practice.endTime}`);
+        }
+      });
     }
 
     return formattedCourse;
