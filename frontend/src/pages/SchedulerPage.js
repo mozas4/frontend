@@ -144,26 +144,10 @@ const SchedulerPage = ({ user, authToken }) => {
       newCourses[index].hasPractice = value.length > 0;
     }
     
-    
-    // Update hasLecture and hasPractice flags based on array contents
-    if (field === 'lectures') {
-      newCourses[index].hasLecture = value.length > 0;
-    }
-    if (field === 'practices') {
-      newCourses[index].hasPractice = value.length > 0;
-    }
-    
     setCourses(newCourses);
   };
 
   const addCourse = () => {
-    setCourses([...courses, { 
-      name: "", 
-      hasLecture: false,
-      hasPractice: false,
-      lectures: [],
-      practices: []
-    }]);
     setCourses([...courses, { 
       name: "", 
       hasLecture: false,
@@ -193,12 +177,10 @@ const SchedulerPage = ({ user, authToken }) => {
     }]);
     setConstraints("");
     setError(null);
+    setParsedConstraints(null);
   };
 
   const validateForm = useCallback(() => {
-    for (let i = 0; i < courses.length; i++) {
-      const course = courses[i];
-      
     for (let i = 0; i < courses.length; i++) {
       const course = courses[i];
       
@@ -219,62 +201,7 @@ const SchedulerPage = ({ user, authToken }) => {
 
       if (!hasValidLectures && !hasValidPractices) {
         throw new Error(`Course "${course.name}" must have at least one complete lecture or practice session`);
-        throw new Error(`Please fill in the name for course ${i + 1}`);
       }
-
-      // Check if at least one session type has valid time slots
-      const hasValidLectures = course.lectures && course.lectures.length > 0 && 
-        course.lectures.some(lecture => 
-          lecture.day && lecture.startTime !== '' && lecture.endTime !== ''
-        );
-      
-      const hasValidPractices = course.practices && course.practices.length > 0 && 
-        course.practices.some(practice => 
-          practice.day && practice.startTime !== '' && practice.endTime !== ''
-        );
-
-      if (!hasValidLectures && !hasValidPractices) {
-        throw new Error(`Course "${course.name}" must have at least one complete lecture or practice session`);
-      }
-
-      // Validate all lecture time slots
-      if (course.lectures && course.lectures.length > 0) {
-        for (let j = 0; j < course.lectures.length; j++) {
-          const lecture = course.lectures[j];
-          if (lecture.day || lecture.startTime !== '' || lecture.endTime !== '') {
-            // If any field is filled, all must be filled
-            if (!lecture.day || lecture.startTime === '' || lecture.endTime === '') {
-              throw new Error(`Please complete all details for lecture ${j + 1} in "${course.name}"`);
-            }
-            
-            const lectureStart = parseInt(lecture.startTime);
-            const lectureEnd = parseInt(lecture.endTime);
-            
-            if (lectureEnd <= lectureStart) {
-              throw new Error(`Lecture ${j + 1} end time must be after start time for "${course.name}"`);
-            }
-          }
-        }
-      }
-
-      // Validate all practice time slots
-      if (course.practices && course.practices.length > 0) {
-        for (let j = 0; j < course.practices.length; j++) {
-          const practice = course.practices[j];
-          if (practice.day || practice.startTime !== '' || practice.endTime !== '') {
-            // If any field is filled, all must be filled
-            if (!practice.day || practice.startTime === '' || practice.endTime === '') {
-              throw new Error(`Please complete all details for practice session ${j + 1} in "${course.name}"`);
-            }
-            
-            const practiceStart = parseInt(practice.startTime);
-            const practiceEnd = parseInt(practice.endTime);
-            
-            if (practiceEnd <= practiceStart) {
-              throw new Error(`Practice session ${j + 1} end time must be after start time for "${course.name}"`);
-            }
-          }
-        }
 
       // Validate all lecture time slots
       if (course.lectures && course.lectures.length > 0) {
@@ -351,61 +278,13 @@ const SchedulerPage = ({ user, authToken }) => {
       validateForm();
 
       const formattedCourses = courses.map(formatCourseForAPI);
-  const formatCourseForAPI = useCallback((course) => {
-    const formattedCourse = {
-      name: course.name.trim(),
-      lectures: [],
-      ta_times: []
-    };
 
-    // Add all valid lecture time slots
-    if (course.lectures && course.lectures.length > 0) {
-      course.lectures.forEach(lecture => {
-        if (lecture.day && lecture.startTime !== '' && lecture.endTime !== '') {
-          formattedCourse.lectures.push(`${lecture.day} ${lecture.startTime}-${lecture.endTime}`);
-        }
-      });
-    }
-
-    // Add all valid practice time slots
-    if (course.practices && course.practices.length > 0) {
-      course.practices.forEach(practice => {
-        if (practice.day && practice.startTime !== '' && practice.endTime !== '') {
-          formattedCourse.ta_times.push(`${practice.day} ${practice.startTime}-${practice.endTime}`);
-        }
-      });
-    }
-
-    return formattedCourse;
-  }, []);
-
-  const generateScheduleWithConstraints = useCallback(async (constraintsToUse) => {
-    try {
-      validateForm();
-
-      const formattedCourses = courses.map(formatCourseForAPI);
-
-      localStorage.setItem('originalCourseOptions', JSON.stringify(formattedCourses));
       localStorage.setItem('originalCourseOptions', JSON.stringify(formattedCourses));
 
       const headers = {
         "Content-Type": "application/json"
       };
-      const headers = {
-        "Content-Type": "application/json"
-      };
 
-      // Add authorization header if user is authenticated
-      if (user && authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
-
-      console.log('🔄 Sending request to:', API_BASE_URL + "/api/schedule");
-      console.log('📋 Request payload:', {
-        preference,
-        courses: formattedCourses,
-        constraints: constraintsToUse
-      });
       // Add authorization header if user is authenticated
       if (user && authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
@@ -438,62 +317,13 @@ const SchedulerPage = ({ user, authToken }) => {
         console.error('❌ Non-JSON response received:', responseText);
         throw new Error(`Server returned non-JSON response. Status: ${scheduleRes.status}. This usually means the backend server is not running or the API endpoint is incorrect.`);
       }
-      const scheduleRes = await fetch(API_BASE_URL + "/api/schedule", {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({
-          preference,
-          courses: formattedCourses,
-          constraints: constraintsToUse
-        }),
-      });
-
-      console.log('📡 Response status:', scheduleRes.status);
-      console.log('📡 Response headers:', scheduleRes.headers);
-
-      // Check if response is actually JSON
-      const contentType = scheduleRes.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const responseText = await scheduleRes.text();
-        console.error('❌ Non-JSON response received:', responseText);
-        throw new Error(`Server returned non-JSON response. Status: ${scheduleRes.status}. This usually means the backend server is not running or the API endpoint is incorrect.`);
-      }
 
       if (!scheduleRes.ok) {
         const errorData = await scheduleRes.json();
         console.error('❌ API Error:', errorData);
         throw new Error(errorData.error || `Server error: ${scheduleRes.status}`);
       }
-      if (!scheduleRes.ok) {
-        const errorData = await scheduleRes.json();
-        console.error('❌ API Error:', errorData);
-        throw new Error(errorData.error || `Server error: ${scheduleRes.status}`);
-      }
 
-      const data = await scheduleRes.json();
-      console.log('✅ Schedule response:', data);
-      
-      if (data.schedule) {
-        setSchedule(data.schedule);
-        setError(null);
-      } else {
-        const errorMessage = data.error || 'No valid schedule found with the given constraints. Try adjusting your requirements.';
-        setError(errorMessage);
-      }
-    } catch (err) {
-      console.error('❌ Schedule generation error:', err);
-      let errorMessage = err.message;
-      
-      // Provide more helpful error messages
-      if (err.message.includes('Failed to fetch')) {
-        errorMessage = 'Unable to connect to the server. Please check if the backend is running and try again.';
-      } else if (err.message.includes('NetworkError')) {
-        errorMessage = 'Network error. Please check your internet connection and try again.';
-      }
-      
-      setError(errorMessage);
-    }
-  }, [courses, preference, validateForm, user, authToken, API_BASE_URL, formatCourseForAPI]);
       const data = await scheduleRes.json();
       console.log('✅ Schedule response:', data);
       
@@ -530,7 +360,6 @@ const SchedulerPage = ({ user, authToken }) => {
       let parsedConstraints = [];
       let constraintsData = null;
       
-      
       if (constraints.trim()) {
         const headers = {
           "Content-Type": "application/json"
@@ -540,9 +369,6 @@ const SchedulerPage = ({ user, authToken }) => {
         if (user && authToken) {
           headers['Authorization'] = `Bearer ${authToken}`;
         }
-
-        console.log('🔄 Parsing constraints...');
-        
 
         console.log('🔄 Parsing constraints...');
         
@@ -562,39 +388,29 @@ const SchedulerPage = ({ user, authToken }) => {
           throw new Error(`Constraints parsing failed. Server returned non-JSON response. This usually means the backend server is not running.`);
         }
 
-        console.log('📡 Parse response status:', parseRes.status);
-
-        // Check if response is actually JSON
-        const contentType = parseRes.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const responseText = await parseRes.text();
-          console.error('❌ Non-JSON response from parse endpoint:', responseText);
-          throw new Error(`Constraints parsing failed. Server returned non-JSON response. This usually means the backend server is not running.`);
-        }
-
         if (!parseRes.ok) {
           const errorData = await parseRes.json();
-          console.error('❌ Parse error:', errorData);
           console.error('❌ Parse error:', errorData);
           throw new Error(errorData.error || 'Failed to parse constraints');
         }
 
         constraintsData = await parseRes.json();
         parsedConstraints = constraintsData[0]?.constraints || [];
-        setParsedConstraints(parsedConstraints);
-        console.log('✅ Constraints parsed:', parsedConstraints);
+        
+        // Enhanced constraints data with original text and entities
+        const enhancedConstraintsData = {
+          constraints: parsedConstraints,
+          entities: constraintsData[0]?.entities || [],
+          originalText: constraints.trim(),
+          parsedAt: new Date().toISOString()
+        };
+        
+        setParsedConstraints(enhancedConstraintsData);
+        console.log('✅ Constraints parsed:', enhancedConstraintsData);
       }
 
       await generateScheduleWithConstraints(parsedConstraints);
     } catch (err) {
-      console.error('❌ Submit error:', err);
-      let errorMessage = err.message;
-      
-      // Provide more helpful error messages
-      if (err.message.includes('Failed to fetch')) {
-        errorMessage = 'Unable to connect to the server. Please make sure the backend is running on the correct port and try again.';
-      }
-      
       console.error('❌ Submit error:', err);
       let errorMessage = err.message;
       
