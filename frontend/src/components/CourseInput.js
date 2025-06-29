@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import React, { useState } from 'react';
 import '../styles/CourseInput.css';
 
 const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
@@ -13,8 +12,9 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
         { value: 'Fri', label: 'Friday' }
     ];
 
-    const hours = Array.from({ length: 14 }, (_, i) => {
-        const hour = i + 8; // 8 AM to 9 PM
+    // Extended hours from 7 AM to 10 PM to match the schedule display
+    const hours = Array.from({ length: 15 }, (_, i) => {
+        const hour = i + 7; // 7 AM to 9 PM (last start time)
         return {
             value: hour,
             label: `${hour}:00`
@@ -36,6 +36,8 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
                 newErrors[errorKey] = 'End time must be after start time';
             } else if (end - start > 6) {
                 newErrors[errorKey] = 'Class duration cannot exceed 6 hours';
+            } else if (end > 22) { // 10 PM is the latest end time
+                newErrors[errorKey] = 'Classes cannot end after 10 PM';
             }
         }
 
@@ -153,7 +155,9 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
     const getAvailableEndTimes = (startTime) => {
         if (startTime === '' || startTime === null) return [];
         const start = parseInt(startTime);
-        return hours.filter(hour => hour.value > start && hour.value <= start + 6);
+        // End times can go up to 10 PM (22:00), but limited by duration and start time
+        const maxEndTime = Math.min(start + 6, 22); // Max 6 hours or 10 PM, whichever is earlier
+        return hours.filter(hour => hour.value > start && hour.value <= maxEndTime);
     };
 
     const hasValidSession = () => {
@@ -205,7 +209,7 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
             (course.lectures && course.lectures.length > 1) : 
             (course.practices && course.practices.length > 1);
 
-        // המר ערכי יום לפורמט שה-select מבין
+        // Convert day values to format that the select understands
         const getDayValue = (day) => {
             const dayMap = {
                 'Monday': 'Mon',
@@ -222,14 +226,14 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
             return dayMap[day] || day;
         };
 
-        // המר ערכי זמן לפורמט שה-select מבין
+        // Convert time values to format that the select understands
         const getTimeValue = (time) => {
             if (!time) return '';
-            // אם זה מחרוזת עם ":", קח רק את החלק הראשון
+            // If it's a string with ":", take only the first part
             if (typeof time === 'string' && time.includes(':')) {
                 return parseInt(time.split(':')[0]);
             }
-            // אם זה מספר, החזר אותו
+            // If it's a number, return it
             return parseInt(time);
         };
 
@@ -276,7 +280,7 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
                             className="time-selector"
                         >
                             <option value="">Start</option>
-                            {hours.slice(0, -1).map(hour => (
+                            {hours.slice(0, -1).map(hour => ( // Don't allow starting at the last hour
                                 <option key={hour.value} value={hour.value}>
                                     {hour.label}
                                 </option>
@@ -319,7 +323,6 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
 
     return (
         <div className={`course-block ${!hasValidSession() ? 'invalid' : ''}`}>
-        <div className={`course-block ${!hasValidSession() ? 'invalid' : ''}`}>
             {canRemove && (
                 <button 
                     type="button"
@@ -335,7 +338,6 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
             <div className="input-group">
                 <label className="input-label" htmlFor={`course-name-${index}`}>
                     Course Name *
-                    Course Name *
                 </label>
                 <input
                     id={`course-name-${index}`}
@@ -347,109 +349,6 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
                     required
                 />
             </div>
-
-            <div className="sessions-container">
-                <div className="session-header">
-                    <h4>Course Sessions</h4>
-                    <p className="session-note">Add at least one lecture or practice session</p>
-                </div>
-
-                {/* Lecture Section */}
-                <div className="session-section">
-                    <div className="session-type-header">
-                        <h5 className="session-type-title">📚 Lectures</h5>
-                        <div className="session-actions">
-                            <button
-                                type="button"
-                                className="add-slot-btn"
-                                onClick={addLectureSlot}
-                                title="Add lecture time slot"
-                            >
-                                + Add Lecture
-                            </button>
-                            {course.lectures && course.lectures.length > 0 && canDeleteLectures() && (
-                                <button
-                                    type="button"
-                                    className="delete-section-btn"
-                                    onClick={deleteAllLectures}
-                                    title="Delete all lectures"
-                                >
-                                    🗑️ Delete All
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {course.lectures && course.lectures.length > 0 ? (
-                        <div className="time-slots-container">
-                            {course.lectures.map((lecture, slotIndex) => 
-                                renderTimeSlot(
-                                    lecture, 
-                                    slotIndex, 
-                                    'lecture', 
-                                    handleLectureChange, 
-                                    removeLectureSlot
-                                )
-                            )}
-                        </div>
-                    ) : (
-                        <div className="no-sessions-message">
-                            No lecture sessions added. Click "Add Lecture" to add one.
-                        </div>
-                    )}
-                </div>
-
-                {/* Practice Section */}
-                <div className="session-section">
-                    <div className="session-type-header">
-                        <h5 className="session-type-title">👨‍🏫 Practice/TA Sessions</h5>
-                        <div className="session-actions">
-                            <button
-                                type="button"
-                                className="add-slot-btn"
-                                onClick={addPracticeSlot}
-                                title="Add practice time slot"
-                            >
-                                + Add Practice
-                            </button>
-                            {course.practices && course.practices.length > 0 && canDeletePractices() && (
-                                <button
-                                    type="button"
-                                    className="delete-section-btn"
-                                    onClick={deleteAllPractices}
-                                    title="Delete all practices"
-                                >
-                                    🗑️ Delete All
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {course.practices && course.practices.length > 0 ? (
-                        <div className="time-slots-container">
-                            {course.practices.map((practice, slotIndex) => 
-                                renderTimeSlot(
-                                    practice, 
-                                    slotIndex, 
-                                    'practice', 
-                                    handlePracticeChange, 
-                                    removePracticeSlot
-                                )
-                            )}
-                        </div>
-                    ) : (
-                        <div className="no-sessions-message">
-                            No practice sessions added. Click "Add Practice" to add one.
-                        </div>
-                    )}
-                </div>
-
-                {(!course.lectures || course.lectures.length === 0) && 
-                 (!course.practices || course.practices.length === 0) && (
-                    <div className="validation-warning">
-                        ⚠️ Please add at least one lecture or practice session
-                    </div>
-                )}
 
             <div className="sessions-container">
                 <div className="session-header">
