@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import React, { useState } from 'react';
 import '../styles/CourseInput.css';
 
 const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
@@ -318,6 +319,7 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
 
     return (
         <div className={`course-block ${!hasValidSession() ? 'invalid' : ''}`}>
+        <div className={`course-block ${!hasValidSession() ? 'invalid' : ''}`}>
             {canRemove && (
                 <button 
                     type="button"
@@ -333,6 +335,7 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
             <div className="input-group">
                 <label className="input-label" htmlFor={`course-name-${index}`}>
                     Course Name *
+                    Course Name *
                 </label>
                 <input
                     id={`course-name-${index}`}
@@ -344,6 +347,109 @@ const CourseInput = ({ course, onChange, index, onRemove, canRemove }) => {
                     required
                 />
             </div>
+
+            <div className="sessions-container">
+                <div className="session-header">
+                    <h4>Course Sessions</h4>
+                    <p className="session-note">Add at least one lecture or practice session</p>
+                </div>
+
+                {/* Lecture Section */}
+                <div className="session-section">
+                    <div className="session-type-header">
+                        <h5 className="session-type-title">📚 Lectures</h5>
+                        <div className="session-actions">
+                            <button
+                                type="button"
+                                className="add-slot-btn"
+                                onClick={addLectureSlot}
+                                title="Add lecture time slot"
+                            >
+                                + Add Lecture
+                            </button>
+                            {course.lectures && course.lectures.length > 0 && canDeleteLectures() && (
+                                <button
+                                    type="button"
+                                    className="delete-section-btn"
+                                    onClick={deleteAllLectures}
+                                    title="Delete all lectures"
+                                >
+                                    🗑️ Delete All
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {course.lectures && course.lectures.length > 0 ? (
+                        <div className="time-slots-container">
+                            {course.lectures.map((lecture, slotIndex) => 
+                                renderTimeSlot(
+                                    lecture, 
+                                    slotIndex, 
+                                    'lecture', 
+                                    handleLectureChange, 
+                                    removeLectureSlot
+                                )
+                            )}
+                        </div>
+                    ) : (
+                        <div className="no-sessions-message">
+                            No lecture sessions added. Click "Add Lecture" to add one.
+                        </div>
+                    )}
+                </div>
+
+                {/* Practice Section */}
+                <div className="session-section">
+                    <div className="session-type-header">
+                        <h5 className="session-type-title">👨‍🏫 Practice/TA Sessions</h5>
+                        <div className="session-actions">
+                            <button
+                                type="button"
+                                className="add-slot-btn"
+                                onClick={addPracticeSlot}
+                                title="Add practice time slot"
+                            >
+                                + Add Practice
+                            </button>
+                            {course.practices && course.practices.length > 0 && canDeletePractices() && (
+                                <button
+                                    type="button"
+                                    className="delete-section-btn"
+                                    onClick={deleteAllPractices}
+                                    title="Delete all practices"
+                                >
+                                    🗑️ Delete All
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {course.practices && course.practices.length > 0 ? (
+                        <div className="time-slots-container">
+                            {course.practices.map((practice, slotIndex) => 
+                                renderTimeSlot(
+                                    practice, 
+                                    slotIndex, 
+                                    'practice', 
+                                    handlePracticeChange, 
+                                    removePracticeSlot
+                                )
+                            )}
+                        </div>
+                    ) : (
+                        <div className="no-sessions-message">
+                            No practice sessions added. Click "Add Practice" to add one.
+                        </div>
+                    )}
+                </div>
+
+                {(!course.lectures || course.lectures.length === 0) && 
+                 (!course.practices || course.practices.length === 0) && (
+                    <div className="validation-warning">
+                        ⚠️ Please add at least one lecture or practice session
+                    </div>
+                )}
 
             <div className="sessions-container">
                 <div className="session-header">
