@@ -18,7 +18,7 @@ const WeeklySchedule = ({ schedule, isLoading, user, authToken, scheduleName, sc
   const [showNotImplemented, setShowNotImplemented] = useState(false);
   const [notImplementedFeature, setNotImplementedFeature] = useState('');
   
-  // Progress tracking state
+  // Progress tracking state - only for new generation, not loaded schedules
   const [progress, setProgress] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
@@ -33,9 +33,10 @@ const WeeklySchedule = ({ schedule, isLoading, user, authToken, scheduleName, sc
     }
   }, [schedule, originalCourseOptions]);
 
-  // Simulate progress tracking when loading
+  // Simulate progress tracking ONLY when loading NEW schedules (not loaded ones)
   React.useEffect(() => {
-    if (isLoading) {
+    // Only show loading animation for NEW schedule generation, not for loaded schedules
+    if (isLoading && !scheduleName) {
       setProgress(0);
       setEstimatedTime(8); // 8 seconds estimated
       setCurrentStep('Analyzing course options...');
@@ -53,7 +54,7 @@ const WeeklySchedule = ({ schedule, isLoading, user, authToken, scheduleName, sc
       let totalElapsed = 0;
       
       const updateProgress = () => {
-        if (currentStepIndex < steps.length && isLoading) {
+        if (currentStepIndex < steps.length && isLoading && !scheduleName) {
           const step = steps[currentStepIndex];
           setProgress(step.progress);
           setCurrentStep(step.step);
@@ -75,7 +76,7 @@ const WeeklySchedule = ({ schedule, isLoading, user, authToken, scheduleName, sc
       setEstimatedTime(0);
       setCurrentStep('');
     }
-  }, [isLoading]);
+  }, [isLoading, scheduleName]);
 
   // Extract original course options from the backend data
   const extractOriginalOptions = async (scheduleData) => {
@@ -146,7 +147,8 @@ const WeeklySchedule = ({ schedule, isLoading, user, authToken, scheduleName, sc
     alert(`Schedule "${savedSchedule.schedule_name}" saved successfully!`);
   };
 
-  if (isLoading) {
+  // Show loading skeleton ONLY for NEW schedule generation, not loaded schedules
+  if (isLoading && !scheduleName) {
     return (
       <ScheduleSkeletonLoader 
         progress={progress}
@@ -517,15 +519,19 @@ const WeeklySchedule = ({ schedule, isLoading, user, authToken, scheduleName, sc
   return (
     <div className="weekly-scheduler-container">
       <div className="scheduler-header">
-        <h2 className="scheduler-title">
-          {scheduleName ? scheduleName : 'Weekly Schedule'}
-        </h2>
-        {scheduleName && (
-          <div className="schedule-source">
-            <span className="source-label">📂 Loaded from saved schedules</span>
-            <span className="edit-hint">You can modify the course times on the left and regenerate</span>
-          </div>
-        )}
+        <div className="header-content">
+          <h2 className="scheduler-title">
+            {scheduleName ? scheduleName : 'Weekly Schedule'}
+          </h2>
+          {scheduleName && (
+            <div className="schedule-source">
+              <div className="source-info">
+                <span className="source-badge">📂 Loaded Schedule</span>
+                <span className="edit-hint">You can modify course times on the left and regenerate</span>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="scheduler-actions">
           {draggedClass && (
             <button 
